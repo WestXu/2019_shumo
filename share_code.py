@@ -151,7 +151,16 @@ class Solver:
             y="Y坐标",
             z="Z坐标",
             color=color,
+            color_discrete_map={
+                0: 'red',
+                1: 'green',
+                'A点': 'blue',
+                'B点': 'purple',
+                'True': 'blue',
+                'False': 'red',
+            },
             hover_data=['编号'],
+            opacity=0.7,
         )
 
         fig.update_traces(marker_size=3)
