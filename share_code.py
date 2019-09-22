@@ -277,7 +277,7 @@ class Solver:
         print('Basic model initialized.')
         return model
 
-    def add_adjust_constr(self, adjust_points, threshold, name_suffix):
+    def add_adjust_varables(self, adjust_points, name_suffix):
         model = self.model
         N = self.N
         I = self.I
@@ -304,6 +304,7 @@ class Solver:
             model.addConstr((IsStepAjusted[n] == 1) >> (NotStepAjusted[n] == 0))
             model.addConstr((IsStepAjusted[n] == 0) >> (NotStepAjusted[n] == 1))
 
+        # ==========================================================================================
         print(f'IsStepNCumX_{name_suffix}[n, x] 表示第n步是否累计了x次{name_suffix}误差没有校正')
         IsStepNCumX = model.addVars(
             range(1, N),
@@ -320,8 +321,13 @@ class Solver:
             (Q[n] == 0) >> (IsStepNCumX.sum(n, '*') == 0)
             for n in tqdm(range(1, N), desc=f'Qn为0则IsStepNCumX_{name_suffix}[n, *]都为0')
         )
-
-        for n in tqdm(range(1, N), desc=f'限制每步的累计{name_suffix}误差'):
+        # ==========================================================================================
+        StepNCumB = model.addVars(
+            range(1, N), vtype=gurobipy.GRB.INTEGER, name='StepNCumB_' + name_suffix
+        )
+        for n in tqdm(
+            range(1, N), desc=f'StepNCumB{name_suffix}[n] 表示第n步累积了多少{name_suffix}误差'
+        ):
 
             def sum_B(n1, n2):
                 return gurobipy.quicksum(B[_] for _ in range(n1, n2 + 1))
@@ -336,32 +342,51 @@ class Solver:
                     )
                 )
                 model.addConstr(
-                    (IsStepNCumX[n, x] == 1) >> (sum_B(n - x + 1, n) <= threshold)
+                    (IsStepNCumX[n, x] == 1) >> (StepNCumB[n] == sum_B(n - x + 1, n))
                 )
 
             if n == 1:
                 model.addConstr(IsStepNCumX[1, 1] == 1)
-                model.addConstr(sum_B(1, 1) <= threshold)
+                model.addConstr(StepNCumB[1] == sum_B(1, 1))
             else:
                 for x in range(1, n + 1):
                     add_x_constr(x)
             for x in range(n + 1, N):
                 model.addConstr(IsStepNCumX[n, x] == 0)
-        return IsStepAjusted, IsStepNCumX
+        return IsStepAjusted, IsStepNCumX, StepNCumB
+
+    def add_adjust_constr(self):
+
+        tdf = self.df.reset_index()
+        vertical_points = tdf[tdf['校正点类型'] == 1].index.tolist()
+        self.IsStepAjusted_V, self.IsStepNCumX_V, self.StepNCumB_V = self.add_adjust_varables(
+            vertical_points, name_suffix='V'
+        )
+
+        horizontal_points = tdf[tdf['校正点类型'] == 0].index.tolist()
+        self.IsStepAjusted_H, self.IsStepNCumX_H, self.StepNCumB_H = self.add_adjust_varables(
+            horizontal_points, name_suffix='H'
+        )
+
+        for n in tqdm(range(1, self.N), desc=f'限制每步的累计误差'):
+            self.model.addConstr(
+                (self.IsStepAjusted_V[n] == 1) >> (self.StepNCumB_V[n] <= self.alpha1)
+            )
+            self.model.addConstr(
+                (self.IsStepAjusted_V[n] == 1) >> (self.StepNCumB_H[n] <= self.alpha2)
+            )
+            self.model.addConstr(
+                (self.IsStepAjusted_H[n] == 1) >> (self.StepNCumB_V[n] <= self.beta1)
+            )
+            self.model.addConstr(
+                (self.IsStepAjusted_H[n] == 1) >> (self.StepNCumB_H[n] <= self.beta2)
+        )
 
     def build_model(self):
 
         self.init_basic_model()
 
-        vertical_points = self.df[self.df['校正点类型'] == 1].index.tolist()
-        self.V, self.Z = self.add_adjust_constr(
-            vertical_points, threshold=min(self.alpha1, self.beta1), name_suffix='V'
-        )
-
-        horizontal_points = self.df[self.df['校正点类型'] == 0].index.tolist()
-        self.H, self.Y = self.add_adjust_constr(
-            horizontal_points, threshold=min(self.alpha2, self.beta2), name_suffix='H'
-        )
+        self.add_adjust_constr()
 
         for n in tqdm(range(1, self.N), desc='加入一些冗余约束提高速度'):
             self.model.addConstr((self.Q[n] == 1) >> (self.C[n] >= 1))
@@ -371,10 +396,10 @@ class Solver:
             )  # Note: 当B设为整数时才能这么写
 
             self.model.addConstr(
-                (self.Q[n] == 1) >> (self.Z.sum(n, '*') >= 1)  # Note: 当B设为整数时才能这么写
+                (self.Q[n] == 1) >> (self.IsStepNCumX_V.sum(n, '*') >= 1)  # Note: 当B设为整数时才能这么写
             )
             self.model.addConstr(
-                (self.Q[n] == 1) >> (self.Y.sum(n, '*') >= 1)  # Note: 当B设为整数时才能这么写
+                (self.Q[n] == 1) >> (self.IsStepNCumX_H.sum(n, '*') >= 1)  # Note: 当B设为整数时才能这么写
             )
 
     def print_res(self):
