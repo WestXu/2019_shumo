@@ -64,6 +64,7 @@ class Solver:
             .replace('A 点', 'A点')
             .rename(columns=lambda _: _.replace("（单位: m）", "").replace("（单位:m）", ""))
             .rename(columns={'校正点标记': '校正点类型'})
+            .rename_axis('编号')
         )
 
         if self.subsample_how is None:
@@ -127,23 +128,17 @@ class Solver:
         '''点数'''
         return len(self.df)
 
-    def get_init_fig(self, only_sample=True):
+    def get_init_fig(self, only_sample=True, color='校正点类型'):
 
-        if only_sample:
             fig = px.scatter_3d(
-                self.raw_df.assign(in_subsample=lambda _: _.in_subsample.astype(str)),
+            (self.df if only_sample else self.raw_df)
+            .reset_index()
+            .assign(in_subsample=lambda _: _.in_subsample.astype(str)),
                 x="X坐标",
                 y="Y坐标",
                 z="Z坐标",
-                color="in_subsample",
-            )
-        else:
-            fig = px.scatter_3d(
-                self.df.assign(in_subsample=lambda _: _.in_subsample.astype(str)),
-                x='X坐标',
-                y='Y坐标',
-                z='Z坐标',
-                color='校正点类型',
+            color=color,
+            hover_data=['编号'],
             )
 
         fig.update_traces(marker_size=3)
