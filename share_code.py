@@ -246,6 +246,7 @@ class Solver:
             )
 
         for n in tqdm(range(2, N), desc='添加Bn约束'):  # 不需要包括第一步,第二步之后就包括了所有信息
+            model.addConstr(B[n] >= 0)
             model.addConstr(
                 B[n]
                 == gurobipy.quicksum(
