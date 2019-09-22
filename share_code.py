@@ -37,6 +37,7 @@ class Solver:
         self, which_dataset=1, subsample_how=None, subsample_rows=None, max_step=None
     ):
         assert which_dataset in (1, 2)
+        self.which_dataset = which_dataset
         if which_dataset == 1:
             self.alpha1 = 25
             self.alpha2 = 15
@@ -489,6 +490,26 @@ class Solver:
                 line_width=2,
             )
         )
+
+    def save(self, suffix):
+        save_folder = Path("solutions") / f"dataset{self.which_dataset}_{suffix}"
+        if not save_folder.is_dir():
+            save_folder.mkdir(parents=True)
+        self.model.write(str(save_folder / "model.mst"))
+        self.model.write(str(save_folder / "model.sol"))
+        self.routes_df.to_csv(save_folder / "routes_df.csv", encoding="gbk")
+        self.res_df.to_csv(save_folder / "res_df.csv", encoding="gbk")
+
+        def save_fig(fig, path):
+            path.open("w").write(fig.update_layout(height=1000).to_html())
+
+        save_fig(self.plot(True, "校正点类型"), Path(save_folder / "sample_type.html"))
+        save_fig(self.plot(False, "校正点类型"), Path(save_folder / "full_type.html"))
+        save_fig(
+            self.plot(False, "in_subsample"), Path(save_folder / "full_subsample.html")
+        )
+
+        print("Saved to " + str(save_folder))
 
 
 if __name__ == "__main__":
