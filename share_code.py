@@ -1,6 +1,7 @@
 import functools
 import json
 from pathlib import Path
+import winsound
 
 import gurobipy
 import methodtools
@@ -379,6 +380,14 @@ class Solver:
             horizontal_points, name_suffix='H'
         )
 
+        for n in tqdm(range(1, self.N), desc=f'不能同时是垂直和水平校正点'):
+            self.model.addConstr(
+                (self.IsStepAjusted_V[n] == 1) >> (self.IsStepAjusted_H[n] == 0)
+            )
+            self.model.addConstr(
+                (self.IsStepAjusted_H[n] == 1) >> (self.IsStepAjusted_V[n] == 0)
+            )
+
         for n in tqdm(range(1, self.N), desc=f'限制每步的累计误差'):
             self.model.addConstr(
                 (self.IsStepAjusted_V[n] == 1) >> (self.StepNCumB_V[n] <= self.alpha1)
@@ -524,36 +533,17 @@ class Solver:
 
 
 if __name__ == "__main__":
-    s = Solver(subsample_how='barrel', subsample_rows=20, max_step=9)
-    df = s.df
-    N = s.N
-    s.theta *= 10
-    s.beta1 *= 10
-    s.beta2 *= 10
-    s.alpha1 *= 10
-    s.alpha2 *= 10
-    df
-
+    s = Solver(which_dataset=1, subsample_how='barrel', subsample_rows=60, max_step=12)
     s.build_model()
-    model = s.model
-    F, C, Q, B, T = s.F, s.C, s.Q, s.B, s.T
 
     # 创建目标函数
-    model.setObjective(
-        #     B.sum('*'),
-        1,
-        gurobipy.GRB.MINIMIZE,
-    )
+    s.model.setObjective(s.B.sum('*'), gurobipy.GRB.MINIMIZE)
 
     # 执行线性规划模型
-    # model.Params.MIPFocus = 3
-    # model.Params.MultiObjPre = 2  # 激进的presolve
-    # model.Params.Presolve = 2  # 激进的presolve
-    # model.Params.Heuristics = 0
-    # model.Params.TimeLimit = 5 * 60
-    model.optimize()
-    print("Obj:", model.objVal)
+    s.model.optimize()
 
-    s.print_res()
-    # s.plot(True).show()
-    s.plot(False).show()
+    # 计算完成后beep提示
+    winsound.Beep(500, 1000)
+
+    # 保存结果
+    s.save('min_distance')
