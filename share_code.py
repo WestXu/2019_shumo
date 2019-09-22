@@ -185,6 +185,13 @@ class Solver:
         vs = self.df.values[[i, j], :3]
         return np.sqrt(sum((vs[1] - vs[0]) ** 2))
 
+    @methodtools.lru_cache(maxsize=None)
+    def get_distance_from_id(self, id1, id2):
+        if id1 == id2:
+            return 0
+        vs = df.loc[id1, id2].values[:3]
+        return np.sqrt(sum((vs[1] - vs[0]) ** 2))
+
     def get_var_res(self, var_name='F', only_val=None, not_val=None):
         '''获取计算结果中变量的值'''
         var_res = [
