@@ -57,7 +57,7 @@ class Solver:
         '''未经任何筛选的df'''
         df = (
             pd.read_excel(
-                r"questions\2019年中国研究生数学建模竞赛F题\\" + self.data_filename,
+                Path('questions') / '2019年中国研究生数学建模竞赛F题' / self.data_filename,
                 skiprows=1,
                 index_col=0,
             )
@@ -278,6 +278,7 @@ class Solver:
         return model
 
     def add_adjust_varables(self, adjust_points, name_suffix):
+        '''添加校正相关变量'''
         model = self.model
         N = self.N
         I = self.I
@@ -356,7 +357,7 @@ class Solver:
         return IsStepAjusted, IsStepNCumX, StepNCumB
 
     def add_adjust_constr(self):
-
+        '''添加校正相关约束'''
         tdf = self.df.reset_index()
         vertical_points = tdf[tdf['校正点类型'] == 1].index.tolist()
         self.IsStepAjusted_V, self.IsStepNCumX_V, self.StepNCumB_V = self.add_adjust_varables(
@@ -382,6 +383,16 @@ class Solver:
                 (self.IsStepAjusted_H[n] == 1) >> (self.StepNCumB_H[n] <= self.beta2)
             )
 
+        for n in tqdm(range(1, self.N), desc='B点的累计误差小于theta'):
+            self.model.addConstr(
+                (self.F[n, self.I - 1] == 1)
+                >> (self.StepNCumB_V[self.N - 1] <= self.theta)
+            )
+            self.model.addConstr(
+                (self.F[n, self.I - 1] == 1)
+                >> (self.StepNCumB_H[self.N - 1] <= self.theta)
+            )
+
     def build_model(self):
 
         self.init_basic_model()
@@ -396,10 +407,12 @@ class Solver:
             )  # Note: 当B设为整数时才能这么写
 
             self.model.addConstr(
-                (self.Q[n] == 1) >> (self.IsStepNCumX_V.sum(n, '*') >= 1)  # Note: 当B设为整数时才能这么写
+                (self.Q[n] == 1)
+                >> (self.IsStepNCumX_V.sum(n, '*') >= 1)  # Note: 当B设为整数时才能这么写
             )
             self.model.addConstr(
-                (self.Q[n] == 1) >> (self.IsStepNCumX_H.sum(n, '*') >= 1)  # Note: 当B设为整数时才能这么写
+                (self.Q[n] == 1)
+                >> (self.IsStepNCumX_H.sum(n, '*') >= 1)  # Note: 当B设为整数时才能这么写
             )
 
     def print_res(self):
