@@ -1,4 +1,5 @@
 import functools
+import json
 from pathlib import Path
 
 import gurobipy
@@ -497,6 +498,8 @@ class Solver:
             save_folder.mkdir(parents=True)
         self.model.write(str(save_folder / "model.mst"))
         self.model.write(str(save_folder / "model.sol"))
+
+        self.df.to_csv(save_folder / "df.csv", encoding="gbk")
         self.routes_df.to_csv(save_folder / "routes_df.csv", encoding="gbk")
         self.res_df.to_csv(save_folder / "res_df.csv", encoding="gbk")
 
@@ -507,6 +510,11 @@ class Solver:
         save_fig(self.plot(False, "校正点类型"), Path(save_folder / "full_type.html"))
         save_fig(
             self.plot(False, "in_subsample"), Path(save_folder / "full_subsample.html")
+        )
+
+        json.dump(
+            {'total_distance': self.total_distance},
+            Path(save_folder / "metrics.json").open('w'),
         )
 
         print("Saved to " + str(save_folder))
