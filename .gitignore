@@ -1,0 +1,7 @@
+questions
+tmp
+*.ipynb
+.ipynb_checkpoints
+__pycache__
+.vscode
+gurobi.log
