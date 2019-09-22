@@ -380,12 +380,10 @@ class Solver:
 
         for n in tqdm(range(1, self.N), desc='B点的累计误差小于theta'):
             self.model.addConstr(
-                (self.F[n, self.I - 1] == 1)
-                >> (self.StepNCumB_V[self.N - 1] <= self.theta)
+                (self.F[n, self.I - 1] == 1) >> (self.StepNCumB_V[n] <= self.theta)
             )
             self.model.addConstr(
-                (self.F[n, self.I - 1] == 1)
-                >> (self.StepNCumB_H[self.N - 1] <= self.theta)
+                (self.F[n, self.I - 1] == 1) >> (self.StepNCumB_H[n] <= self.theta)
             )
 
     def build_model(self):
