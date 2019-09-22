@@ -333,12 +333,20 @@ class Solver:
         StepNCumB = model.addVars(
             range(1, N), vtype=gurobipy.GRB.INTEGER, name='StepNCumB_' + name_suffix
         )
-        for n in tqdm(
-            range(1, N), desc=f'StepNCumB{name_suffix}[n] 表示第n步累积了多少{name_suffix}误差'
-        ):
 
-            def sum_B(n1, n2):
-                return gurobipy.quicksum(B[_] for _ in range(n1, n2 + 1))
+        for n in tqdm(range(1, N), desc=f'当时x > n时,StepNCumB{name_suffix}[n]为0'):
+            for x in range(n + 1, N):
+                model.addConstr(IsStepNCumX[n, x] == 0)
+
+        model.addConstr(IsStepNCumX[1, 1] == 1)
+        model.addConstr(StepNCumB[1] == B[1])
+
+        def sum_B(n1, n2):
+            return gurobipy.quicksum(B[_] for _ in range(n1, n2 + 1))
+
+        for n in tqdm(
+            range(2, N), desc=f'StepNCumB{name_suffix}[n] 表示第n步累积了多少{name_suffix}误差'
+        ):
 
             def add_x_constr(x):
                 model.addConstr(
@@ -353,14 +361,9 @@ class Solver:
                     (IsStepNCumX[n, x] == 1) >> (StepNCumB[n] == sum_B(n - x + 1, n))
                 )
 
-            if n == 1:
-                model.addConstr(IsStepNCumX[1, 1] == 1)
-                model.addConstr(StepNCumB[1] == sum_B(1, 1))
-            else:
-                for x in range(1, n + 1):
-                    add_x_constr(x)
-            for x in range(n + 1, N):
-                model.addConstr(IsStepNCumX[n, x] == 0)
+            for x in range(1, n + 1):
+                add_x_constr(x)
+
         return IsStepAjusted, IsStepNCumX, StepNCumB
 
     def add_adjust_constr(self):
