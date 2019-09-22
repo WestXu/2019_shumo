@@ -10,6 +10,8 @@ import plotly.graph_objects as go
 from lazy_object_proxy.utils import cached_property
 from tqdm.auto import tqdm
 
+pd.options.display.max_rows = 10
+
 
 def football_score(x0, y0, z0, A, B):
     to_A_distance = np.sqrt(sum((np.array([x0, y0, z0]) - A) ** 2))
@@ -22,6 +24,12 @@ def barrel_score(x0, y0, z0, A, B):
     S = A - B
     D = np.linalg.norm(np.cross((M - A), S)) / np.linalg.norm(S)
     return D
+
+
+def dumbbell_score(x0, y0, z0, A, B):
+    to_A_distance = np.sqrt(sum((np.array([x0, y0, z0]) - A) ** 2))
+    to_B_distance = np.sqrt(sum((np.array([x0, y0, z0]) - B) ** 2))
+    return min(to_A_distance, to_B_distance) / 10 + barrel_score(x0, y0, z0, A, B)
 
 
 class Solver:
@@ -76,10 +84,12 @@ class Solver:
         if self.subsample_how == 'football':
             '''筛选一个以AB为焦点的橄榄球内的点'''
             score_fucntion = football_score
-
         if self.subsample_how == 'barrel':
             '''筛选一个以AB所连直线为中心轴的圆柱体内的点'''
             score_fucntion = barrel_score
+        if self.subsample_how == 'dumbbell':
+            '''筛选一个以AB所连直线为中心轴的哑铃型内的点'''
+            score_fucntion = dumbbell_score
 
         df['subsample_score'] = df.apply(
             lambda _: score_fucntion(
@@ -130,16 +140,16 @@ class Solver:
 
     def get_init_fig(self, only_sample=True, color='校正点类型'):
 
-            fig = px.scatter_3d(
+        fig = px.scatter_3d(
             (self.df if only_sample else self.raw_df)
             .reset_index()
             .assign(in_subsample=lambda _: _.in_subsample.astype(str)),
-                x="X坐标",
-                y="Y坐标",
-                z="Z坐标",
+            x="X坐标",
+            y="Y坐标",
+            z="Z坐标",
             color=color,
             hover_data=['编号'],
-            )
+        )
 
         fig.update_traces(marker_size=3)
         fig.update_layout(
