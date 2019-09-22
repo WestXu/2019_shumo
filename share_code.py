@@ -261,7 +261,7 @@ class Solver:
         T = model.addVars(range(1, N), vtype=gurobipy.GRB.INTEGER, name="T")
         self.T = T
 
-        threshold = min(self.alpha1, self.alpha2, self.beta1, self.beta2, self.theta)
+        threshold = self.theta
         # threshold = self.theta
         for n in tqdm(range(2, N), desc='两点之间的距离本身就超过阈值则直接剔除'):
             model.addConstr((T[n] == 1) >> (B[n] >= threshold))
@@ -380,7 +380,7 @@ class Solver:
             )
             self.model.addConstr(
                 (self.IsStepAjusted_H[n] == 1) >> (self.StepNCumB_H[n] <= self.beta2)
-        )
+            )
 
     def build_model(self):
 
