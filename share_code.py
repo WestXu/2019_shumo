@@ -452,7 +452,7 @@ class Solver:
 
         print(self.get_var_res('IsStepAjusted_H', 1))
 
-    @property
+    @cached_property
     def routes_df(self):
         routes = self.get_var_res('C', not_val=0)
         routes_df = self.df.iloc[[0] + [round(_[1]) for _ in routes]]
