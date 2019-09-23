@@ -35,3 +35,7 @@
 ```python
     s.save('结果1')
 ```
+
+# Output
+
+![](输出截图.png)
