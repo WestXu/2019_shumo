@@ -38,4 +38,6 @@
 
 # Output
 
+![](solution_graph.png)
+
 ![](输出截图.png)
